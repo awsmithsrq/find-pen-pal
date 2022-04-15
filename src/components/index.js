@@ -2,6 +2,8 @@ import '../styles.css'
 import { useReducer, useEffect } from 'react'
 import reaper from '../images/reaper.jpeg'
 import { Button } from '@mui/material'
+import keys from '../keys/api'
+import { MailSlurp } from 'mailslurp-client'
 import {
   TextField,
   RadioGroup,
@@ -13,6 +15,8 @@ import {
   Switch,
   FormLabel,
 } from '@mui/material'
+
+const mailslurp = new MailSlurp({ apiKey: keys.apiKey })
 
 const reducer = (state, newState) => ({ ...state, ...newState })
 const initialState = {
@@ -27,6 +31,7 @@ const initialState = {
   submitButtonDisabled: true,
   pristine: true,
   emailError: false,
+  inboxId: '',
 }
 const expression = /^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$/
 const App = () => {
@@ -43,7 +48,36 @@ const App = () => {
     submitButtonDisabled,
     pristine,
     emailError,
+    inboxId,
   } = state
+
+  const sendEmail = async () => {
+    const options = {
+      to: [email],
+      subject: `Thank you for your interest in Harvestment ${firstName} ${lastName}!`,
+      body: `Hello ${firstName}! We are excited that you have signed up for Harvestment. 
+      We are very interested to add a ${gender} like you to our collection. We think you'll be a perfect addition to our catalogue of specimins! 
+      We found your personal information such as: "${tellUsAboutYou}", very insightful! 
+      A team of our experienced professionals are now enroute to your location to make your aquaintance. 
+      Thank you ${firstName} and we will be seeing you very soon!`,
+    }
+    try {
+      const res = await mailslurp.sendEmail(inboxId, options)
+      console.log(res)
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
+  useEffect(() => {
+    const getInbox = async () => {
+      const inbox = await mailslurp.getInbox(keys.inboxId)
+      console.log(inbox)
+      return setState({ inboxId: inbox.id })
+    }
+
+    getInbox()
+  }, [])
 
   useEffect(() => {
     if (
@@ -196,7 +230,14 @@ const App = () => {
         </Grid>
         <Grid item xs={12} className="itemMargin">
           {toggleMore && (
-            <TextField fullWidth multiline label="Enter your Personal Info!" />
+            <TextField
+              onChange={(e) => {
+                setState({ tellUsAboutYou: e.target.value })
+              }}
+              fullWidth
+              multiline
+              label="Enter your Personal Info!"
+            />
           )}
         </Grid>
         <Grid container className="itemMargin">
@@ -228,7 +269,13 @@ const App = () => {
               control={<Checkbox />}
               label="Do you agree for us to harvest you?"
             />
-            <Button disabled={submitButtonDisabled} variant="contained">
+            <Button
+              onClick={() => {
+                sendEmail()
+              }}
+              disabled={submitButtonDisabled}
+              variant="contained"
+            >
               Submit
             </Button>
           </Grid>
